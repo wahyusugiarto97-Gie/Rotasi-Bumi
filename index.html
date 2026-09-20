@@ -435,6 +435,13 @@
         ];
 
         let currentQuizIdx = 0;
+        let labelMarkers = []; // keeps references to the North/South markers so their visibility can be toggled
+
+        // Snapshot of the quiz-area's original markup, taken before any quiz answers are given.
+        // Needed because finishing the quiz replaces quiz-area's innerHTML entirely (see answerQuiz),
+        // which deletes the question/option elements loadQuiz() relies on — resetSim() restores this
+        // snapshot first so loadQuiz() has real elements to populate again.
+        const initialQuizAreaHTML = document.getElementById('quiz-area').innerHTML;
 
         function init() {
             // Scene setup
@@ -527,6 +534,21 @@
             axis = new THREE.Line(axisGeom, axisMat);
             earth.add(axis);
 
+            // Terminator (garis batas siang/malam). Karena posisi Matahari tetap di sumbu +X dan
+            // Bumi berputar di tempat, garis batas siang-malam ini diam terhadap "dunia" (tidak
+            // ditambahkan sebagai child dari earth) — hanya permukaan Bumi yang berputar melewatinya.
+            const terminatorPoints = [];
+            const terminatorSegments = 128;
+            for (let i = 0; i <= terminatorSegments; i++) {
+                const theta = (i / terminatorSegments) * Math.PI * 2;
+                terminatorPoints.push(new THREE.Vector3(0, Math.cos(theta) * 2.05, Math.sin(theta) * 2.05));
+            }
+            const terminatorGeom = new THREE.BufferGeometry().setFromPoints(terminatorPoints);
+            const terminatorMat = new THREE.LineBasicMaterial({ color: 0xffa500 });
+            terminator = new THREE.LineLoop(terminatorGeom, terminatorMat);
+            terminator.visible = document.getElementById('show-terminator').checked;
+            scene.add(terminator);
+
             // Labels (Simplified for web performance)
             addLabel("UTARA", 0, 2.2, 0);
             addLabel("SELATAN", 0, -2.2, 0);
@@ -560,6 +582,7 @@
             const marker = new THREE.Mesh(markerGeom, markerMat);
             marker.position.set(x, y, z);
             earth.add(marker);
+            labelMarkers.push(marker);
         }
 
         function onWindowResize() {
@@ -585,6 +608,9 @@
 
             // Sync visibility based on checkboxes
             axis.visible = document.getElementById('show-axis').checked;
+            terminator.visible = document.getElementById('show-terminator').checked;
+            const labelsOn = document.getElementById('show-labels').checked;
+            labelMarkers.forEach(marker => { marker.visible = labelsOn; });
 
             controls.update();
             renderer.render(scene, camera);
@@ -724,6 +750,13 @@
             score = 0;
             challengeCompleted = false;
             currentQuizIdx = 0;
+
+            // Restore the quiz-area's original markup first — if the quiz was completed,
+            // its question/option elements were replaced by a "selesai" message and no
+            // longer exist, so loadQuiz() would otherwise have nothing to populate.
+            document.getElementById('quiz-area').innerHTML = initialQuizAreaHTML;
+            loadQuiz();
+
             updateScore();
             setTime(6);
             isRotating = false;
@@ -732,7 +765,6 @@
             document.getElementById('mission-complete-ui').classList.add('hidden');
             document.getElementById('status-tag').innerText = "🟡 SEDANG DIEKSPLORASI";
             document.getElementById('status-tag').className = "status-badge";
-            loadQuiz();
         }
 
         function focusEarth() {
