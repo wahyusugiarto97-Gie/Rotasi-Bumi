@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MISI LANGIT - MISI 1: ROTASI BUMI</title>
+    <!-- Import Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls for interaction -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        :root {
+            --primary-cyan: #00f2ff;
+            --dark-bg: #000a12;
+            --panel-bg: rgba(0, 20, 40, 0.85);
+            --accent-gold: #ffd700;
+            --text-white: #ffffff;
+            --success-green: #00ff88;
+            --error-red: #ff4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-white);
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
+
+        /* UI Containers */
+        #ui-wrapper {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Allow interaction with 3D scene below */
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #ui-wrapper > * { pointer-events: auto; }
+
+        /* Header */
+        header {
+            background: linear-gradient(to bottom, rgba(0,242,255,0.2), transparent);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--primary-cyan);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .logo-area h1 { font-size: 1.5rem; color: var(--primary-cyan); letter-spacing: 2px; }
+        .logo-area span { font-size: 0.8rem; color: var(--text-white); }
+
+        .nav-buttons button {
+            background: transparent;
+            border: 1px solid var(--primary-cyan);
+            color: var(--primary-cyan);
+            padding: 5px 15px;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+        }
+
+        .nav-buttons button:hover {
+            background: var(--primary-cyan);
+            color: var(--dark-bg);
+            box-shadow: 0 0 15px var(--primary-cyan);
+        }
+
+        /* Sidebar Panels */
+        .side-panel {
+            position: absolute;
+            top: 100px;
+            width: 300px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            padding: 20px;
+            border-radius: 0 15px 15px 0;
+            backdrop-filter: blur(10px);
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .panel-right { right: 0; border-radius: 15px 0 0 15px; }
+
+        .mission-status {
+            position: absolute;
+            top: 80px; left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .status-badge {
+            padding: 5px 20px;
+            background: #444;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .status-active { background: var(--success-green); color: black; }
+
+        /* Controls Bottom Area */
+        .bottom-controls {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-top: 1px solid var(--primary-cyan);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .control-group { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        
+        input[type=range] { width: 200px; cursor: pointer; }
+
+        .btn-main {
+            background: var(--primary-cyan);
+            color: var(--dark-bg);
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+        }
+
+        /* Quiz Section */
+        .quiz-container { margin-top: 15px; }
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            color: white;
+            text-align: left;
+            cursor: pointer;
+        }
+        .quiz-option:hover { background: rgba(0,242,255,0.2); }
+
+        /* Info Display */
+        .fakta-box {
+            font-style: italic;
+            font-size: 0.9rem;
+            color: var(--accent-gold);
+            margin-top: 10px;
+            border-left: 3px solid var(--accent-gold);
+            padding-left: 10px;
+        }
+
+        .link-explain {
+            display: inline-block;
+            margin-top: 10px;
+            background: none;
+            border: none;
+            color: var(--primary-cyan);
+            text-decoration: underline;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.85rem;
+            padding: 0;
+        }
+
+        /* Modals */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--panel-bg);
+            padding: 40px;
+            border: 2px solid var(--primary-cyan);
+            max-width: 600px;
+            text-align: center;
+            border-radius: 20px;
+        }
+
+        .modal-content.scrollable {
+            max-height: 80vh;
+            overflow-y: auto;
+            text-align: left;
+        }
+
+        .modal-content.scrollable h2 { text-align: center; margin-bottom: 15px; }
+        .modal-content.scrollable h4 { color: var(--primary-cyan); margin-top: 18px; margin-bottom: 6px; }
+        .modal-content.scrollable p, .modal-content.scrollable li { font-size: 0.95rem; line-height: 1.5; margin-bottom: 6px; }
+        .modal-content.scrollable ul, .modal-content.scrollable ol { padding-left: 20px; margin-bottom: 10px; }
+
+        /* Utilities */
+        .hidden { display: none; }
+        .label-3d { 
+            position: absolute; 
+            background: rgba(0,0,0,0.5); 
+            padding: 2px 5px; 
+            border-radius: 3px; 
+            font-size: 12px; 
+            pointer-events: none;
+        }
+
+        #score-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            color: var(--accent-gold);
+            text-shadow: 0 0 10px var(--accent-gold);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .side-panel { width: 100%; position: relative; top: 0; border-radius: 0; height: auto; max-height: none; }
+            #ui-wrapper { overflow-y: auto; pointer-events: auto; }
+            canvas { position: fixed; top: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-wrapper">
+        <!-- Header -->
+        <header>
+            <div class="logo-area">
+                <h1>🚀 MISI LANGIT</h1>
+                <span>Eksplorasi Interaktif Astronomi</span>
+            </div>
+            <div class="nav-buttons">
+                <button onclick="showModal('explain')">📖 PENJELASAN</button>
+                <button onclick="showModal('map')">🗺️ PETA MISI</button>
+                <button onclick="toggleFullscreen()">⛶ LAYAR PENUH</button>
+                <button onclick="resetSim()">🔄 RESET</button>
+            </div>
+        </header>
+
+        <div class="mission-status">
+            <div id="status-tag" class="status-badge">🟡 SEDANG DIEKSPLORASI</div>
+            <h2 style="margin-top:10px">Misi 1: Rotasi Bumi</h2>
+        </div>
+
+        <!-- Left Panel: Tujuan & Langkah -->
+        <div class="side-panel panel-left">
+            <h3>🎯 TUJUAN MISI</h3>
+            <ul style="padding-left: 20px; font-size: 0.9rem; margin-bottom: 15px;">
+                <li>Menjelaskan rotasi Bumi pada porosnya.</li>
+                <li>Menganalisis penyebab siang & malam.</li>
+                <li>Menentukan arah rotasi Bumi.</li>
+            </ul>
+
+            <h3>🏆 TANTANGAN (10 Poin)</h3>
+            <div id="challenge-box">
+                <p>1. Aktifkan rotasi Bumi.</p>
+                <p>2. Atur waktu hingga <b>INDONESIA</b> mengalami <b>SIANG HARI</b> (terang).</p>
+                <button class="btn-main" style="margin-top: 10px; width: 100%;" onclick="checkChallenge()">VERIFIKASI POSISI</button>
+            </div>
+
+            <div id="mission-complete-ui" class="hidden">
+                <h2 style="color: var(--success-green);">✅ BERHASIL!</h2>
+                <p>Kamu telah memahami posisi Indonesia saat siang.</p>
+            </div>
+
+            <h3 style="margin-top: 20px;">🔬 FAKTA SAINS</h3>
+            <div class="fakta-box" id="fakta-text">
+                "Bumi berotasi dari Barat ke Timur, menyebabkan Matahari seolah terbit di Timur."
+            </div>
+            <button class="link-explain" onclick="showModal('explain')">📖 Pelajari lebih lanjut tentang rotasi Bumi</button>
+        </div>
+
+        <!-- Right Panel: Data & Quiz -->
+        <div class="side-panel panel-right">
+            <h3>⭐ SKOR: <span id="score-val">0</span>/50</h3>
+            
+            <div id="quiz-area">
+                <p id="quiz-question"><b>Pertanyaan 1:</b> Apa yang menyebabkan pergantian siang dan malam?</p>
+                <div class="quiz-container">
+                    <button class="quiz-option" onclick="answerQuiz(0, 'A')">A. Revolusi Bumi</button>
+                    <button class="quiz-option" onclick="answerQuiz(0, 'B')">B. Rotasi Bumi pada porosnya</button>
+                    <button class="quiz-option" onclick="answerQuiz(0, 'C')">C. Matahari mengelilingi Bumi</button>
+                    <button class="quiz-option" onclick="answerQuiz(0, 'D')">D. Perubahan cuaca</button>
+                </div>
+            </div>
+
+            <hr style="margin: 15px 0; border: 0.5px solid #444;">
+
+            <h3>📍 STATUS BUMI</h3>
+            <p id="time-display">Waktu: 06:00</p>
+            <p id="region-status">Sisi Siang: Asia, Australia</p>
+            
+            <div style="margin-top:10px">
+                <label><input type="checkbox" id="show-axis" checked> Tampilkan Sumbu</label><br>
+                <label><input type="checkbox" id="show-terminator"> Tampilkan Terminator</label><br>
+                <label><input type="checkbox" id="show-labels" checked> Tampilkan Label</label>
+            </div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="bottom-controls">
+            <div class="control-group">
+                <span>SIMULASI WAKTU</span>
+                <input type="range" id="time-slider" min="0" max="24" step="0.1" value="6">
+                <div style="display:flex; gap:10px">
+                    <button class="btn-main" id="play-pause" onclick="togglePlay()">▶ MULAI</button>
+                    <button class="btn-main" onclick="setTime(12)">🌞 SIANG (12:00)</button>
+                    <button class="btn-main" onclick="setTime(0)">🌚 MALAM (00:00)</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <span>KECEPATAN ROTASI</span>
+                <div style="display:flex; gap:5px">
+                    <button onclick="setSpeed(0.25)">0.25x</button>
+                    <button onclick="setSpeed(1)">1x</button>
+                    <button onclick="setSpeed(5)">5x</button>
+                </div>
+                <div id="speed-indicator" style="font-size:0.8rem">Kecepatan: 1x</div>
+            </div>
+
+            <div class="control-group">
+                <span>MODE PANDANGAN</span>
+                <button class="btn-main" onclick="focusEarth()">FOKUS BUMI</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-map" class="modal">
+        <div class="modal-content">
+            <h2>🗺️ PETA MISI LANGIT</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+                <div style="border: 2px solid var(--primary-cyan); padding: 10px;">
+                    <h4>Misi 1: Rotasi</h4>
+                    <p>STATUS: ✅ TERBUKA</p>
+                </div>
+                <div style="border: 1px solid #444; padding: 10px; color: #666;">
+                    <h4>Misi 2: Fase Bulan</h4>
+                    <p>🔒 TERKUNCI</p>
+                </div>
+                <div style="border: 1px solid #444; padding: 10px; color: #666;">
+                    <h4>Misi 3: Gerhana</h4>
+                    <p>🔒 TERKUNCI</p>
+                </div>
+            </div>
+            <button class="btn-main" style="margin-top: 20px;" onclick="closeModal()">KEMBALI</button>
+        </div>
+    </div>
+
+    <!-- Explanation Modal -->
+    <div id="modal-explain" class="modal">
+        <div class="modal-content scrollable">
+            <h2>🌍 Apa Itu Rotasi Bumi?</h2>
+
+            <h4>📌 Pengertian</h4>
+            <p>Rotasi Bumi adalah gerak berputarnya Bumi pada porosnya sendiri, yaitu garis khayal yang menghubungkan Kutub Utara dan Kutub Selatan.</p>
+
+            <h4>⏱️ Berapa Lama?</h4>
+            <p>Satu kali rotasi penuh membutuhkan waktu kurang lebih <b>24 jam</b>, yang kita kenal sebagai satu hari.</p>
+
+            <h4>🧭 Arah Rotasi</h4>
+            <p>Bumi berotasi dari <b>Barat ke Timur</b>. Karena itulah Matahari tampak terbit di sebelah Timur dan terbenam di sebelah Barat, padahal sebenarnya Bumi yang berputar, bukan Mataharinya.</p>
+
+            <h4>☀️🌙 Penyebab Siang dan Malam</h4>
+            <p>Karena Bumi berbentuk bola dan hanya satu sisi yang bisa disinari Matahari dalam satu waktu:</p>
+            <ul>
+                <li>Sisi Bumi yang <b>menghadap Matahari</b> akan mengalami <b>siang hari</b>.</li>
+                <li>Sisi Bumi yang <b>membelakangi Matahari</b> akan mengalami <b>malam hari</b>.</li>
+                <li>Garis khayal yang memisahkan wilayah siang dan malam disebut <b>terminator</b>.</li>
+            </ul>
+
+            <h4>🌐 Akibat Lain dari Rotasi Bumi</h4>
+            <ol>
+                <li><b>Perbedaan waktu (zona waktu)</b> antar wilayah di dunia, misalnya WIB, WITA, dan WIT di Indonesia.</li>
+                <li><b>Gerak semu harian benda langit</b> — Matahari, Bulan, dan bintang tampak bergerak melintasi langit dari Timur ke Barat, padahal itu akibat perputaran Bumi.</li>
+                <li>Bumi berputar dengan kecepatan sekitar <b>1.670 km/jam</b> di garis khatulistiwa (ekuator).</li>
+            </ol>
+
+            <h4>💡 Ingat</h4>
+            <p>Jangan tertukar dengan <b>revolusi Bumi</b>, yaitu gerak Bumi mengelilingi Matahari yang menyebabkan pergantian musim dan memakan waktu sekitar 365 hari (1 tahun). Rotasi ≠ Revolusi!</p>
+
+            <button class="btn-main" style="margin-top: 20px; width: 100%;" onclick="closeModal()">MENGERTI, KEMBALI KE MISI</button>
+        </div>
+    </div>
+
+    <!-- Final Result Modal -->
+    <div id="modal-finish" class="modal">
+        <div class="modal-content">
+            <h1 style="color: var(--accent-gold);">🚀 MISI BERHASIL!</h1>
+            <p>Selamat, Penjelajah! Kamu telah menguasai konsep Rotasi Bumi.</p>
+            <div id="score-display">50 / 50</div>
+            <p>Badge Didapat: <b>🌍 PENJELAJAH ROTASI</b></p>
+            <button class="btn-main" style="margin-top:20px" onclick="location.reload()">MAIN LAGI</button>
+        </div>
+    </div>
+
+    <script>
+        /** 
+         * THREE.JS ENGINE 
+         */
+        let scene, camera, renderer, controls;
+        let earth, clouds, sun, starField, axis, terminator;
+        let isRotating = false;
+        let rotationSpeed = 0.005;
+        let currentSimTime = 6; // 06.00 AM
+        let score = 0;
+        let challengeCompleted = false; // guard so the +10 challenge points can't be added more than once
+        let answeredQuestions = [false, false, false, false, false];
+
+        // Scoring: challenge (10) + 5 questions x 8 = 50 total max
+        const CHALLENGE_POINTS = 10;
+        const POINTS_PER_QUESTION = 8;
+
+        const questions = [
+            { q: "Apa yang menyebabkan pergantian siang dan malam?", a: "B", opt: ["Revolusi Bumi", "Rotasi Bumi", "Rotasi Bulan", "Gerhana"] },
+            { q: "Bumi berotasi dari arah...", a: "B", opt: ["Timur ke Barat", "Barat ke Timur", "Utara ke Selatan", "Atas ke Bawah"] },
+            { q: "Bagian Bumi yang membelakangi Matahari mengalami...", a: "A", opt: ["Malam", "Siang", "Musim Panas", "Gerhana"] },
+            { q: "Waktu yang dibutuhkan untuk satu kali rotasi adalah...", a: "C", opt: ["12 Jam", "30 Hari", "24 Jam", "365 Hari"] },
+            { q: "Garis khayal yang membatasi siang dan malam disebut...", a: "C", opt: ["Ekuator", "Bujur", "Terminator", "Lintang"] }
+        ];
+
+        let currentQuizIdx = 0;
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(5, 2, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Soft white light
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.PointLight(0xffffff, 1.5, 100);
+            sunLight.position.set(20, 0, 0);
+            sunLight.castShadow = true;
+            scene.add(sunLight);
+
+            // Sun Object (Visual)
+            const sunGeom = new THREE.SphereGeometry(1, 32, 32);
+            const sunMat = new THREE.MeshBasicMaterial({ 
+                color: 0xffdd00,
+                transparent: true,
+                opacity: 0.9
+            });
+            sun = new THREE.Mesh(sunGeom, sunMat);
+            sun.position.set(25, 0, 0);
+            scene.add(sun);
+
+            // Sun Glow
+            const spriteMat = new THREE.SpriteMaterial({
+                map: createGlowTexture(),
+                color: 0xffaa00,
+                transparent: true,
+                blending: THREE.AdditiveBlending
+            });
+            const sunGlow = new THREE.Sprite(spriteMat);
+            sunGlow.scale.set(10, 10, 1);
+            sun.add(sunGlow);
+
+            // Earth
+            const earthGeom = new THREE.SphereGeometry(2, 64, 64);
+            const earthMat = new THREE.MeshPhongMaterial({
+                map: new THREE.TextureLoader().load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/2_no_clouds_4k.jpg'),
+                bumpMap: new THREE.TextureLoader().load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/elev_bump_4k.jpg'),
+                bumpScale: 0.05,
+                specularMap: new THREE.TextureLoader().load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/water_4k.png'),
+                specular: new THREE.Color('grey')
+            });
+            earth = new THREE.Mesh(earthGeom, earthMat);
+            earth.rotation.y = Math.PI; // Start at certain position
+            scene.add(earth);
+
+            // Clouds
+            const cloudGeom = new THREE.SphereGeometry(2.05, 64, 64);
+            const cloudMat = new THREE.MeshPhongMaterial({
+                map: new THREE.TextureLoader().load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/fair_clouds_4k.png'),
+                transparent: true,
+                opacity: 0.4
+            });
+            clouds = new THREE.Mesh(cloudGeom, cloudMat);
+            earth.add(clouds);
+
+            // Stars
+            const starGeom = new THREE.BufferGeometry();
+            const starVertices = [];
+            for(let i=0; i<5000; i++) {
+                const x = (Math.random() - 0.5) * 1500;
+                const y = (Math.random() - 0.5) * 1500;
+                const z = (Math.random() - 0.5) * 1500;
+                starVertices.push(x, y, z);
+            }
+            starGeom.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7 });
+            starField = new THREE.Points(starGeom, starMat);
+            scene.add(starField);
+
+            // Sumbu Rotasi
+            const points = [new THREE.Vector3(0, 3, 0), new THREE.Vector3(0, -3, 0)];
+            const axisGeom = new THREE.BufferGeometry().setFromPoints(points);
+            const axisMat = new THREE.LineBasicMaterial({ color: 0x00f2ff });
+            axis = new THREE.Line(axisGeom, axisMat);
+            earth.add(axis);
+
+            // Labels (Simplified for web performance)
+            addLabel("UTARA", 0, 2.2, 0);
+            addLabel("SELATAN", 0, -2.2, 0);
+
+            // Handle Resize
+            window.addEventListener('resize', onWindowResize, false);
+            
+            animate();
+        }
+
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(32,32,0, 32,32,32);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            grad.addColorStop(0.5, 'rgba(255,200,0,0.4)');
+            grad.addColorStop(1, 'rgba(255,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0,64,64);
+            const tex = new THREE.CanvasTexture(canvas);
+            return tex;
+        }
+
+        function addLabel(text, x, y, z) {
+            // Simplified: we'll just log this as Three.js labels often need CSS2DRenderer
+            // We use simple spheres as markers for this demo
+            const markerGeom = new THREE.SphereGeometry(0.05);
+            const markerMat = new THREE.MeshBasicMaterial({color: 0x00f2ff});
+            const marker = new THREE.Mesh(markerGeom, markerMat);
+            marker.position.set(x, y, z);
+            earth.add(marker);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isRotating) {
+                // Earth rotates West to East (counter-clockwise looking from North)
+                earth.rotation.y += rotationSpeed;
+                clouds.rotation.y += rotationSpeed * 1.1; // Clouds move slightly faster
+                
+                // Sync UI time (approximate)
+                // One full rotation = 24 hours. Earth.rotation.y logic:
+                currentSimTime = ( (earth.rotation.y % (Math.PI * 2)) / (Math.PI * 2) ) * 24;
+                if(currentSimTime < 0) currentSimTime += 24;
+                updateTimeUI();
+            }
+
+            // Sync visibility based on checkboxes
+            axis.visible = document.getElementById('show-axis').checked;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        /**
+         * UI FUNCTIONS
+         */
+        function togglePlay() {
+            isRotating = !isRotating;
+            document.getElementById('play-pause').innerText = isRotating ? "⏸ JEDA" : "▶ MULAI";
+            document.getElementById('status-tag').innerText = isRotating ? "🟢 SEDANG BEROTASI" : "🟡 SIMULASI BERHENTI";
+        }
+
+        function setSpeed(val) {
+            rotationSpeed = 0.005 * val;
+            document.getElementById('speed-indicator').innerText = "Kecepatan: " + val + "x";
+        }
+
+        function setTime(h) {
+            // Mapping hour to rotation
+            // 12.00 (Siang) -> Indonesia facing Sun
+            // We'll roughly offset rotation
+            const targetRot = (h / 24) * Math.PI * 2;
+            earth.rotation.y = targetRot + 4.8; // Offset to align with map texture
+            currentSimTime = h;
+            updateTimeUI();
+        }
+
+        function updateTimeUI() {
+            const h = Math.floor(currentSimTime);
+            const m = Math.floor((currentSimTime % 1) * 60);
+            const timeStr = (h < 10 ? "0"+h : h) + ":" + (m < 10 ? "0"+m : m);
+            document.getElementById('time-display').innerText = "Waktu Simulasi: " + timeStr;
+            document.getElementById('time-slider').value = currentSimTime;
+
+            // Region status logic (simplified)
+            if (h >= 6 && h <= 18) {
+                document.getElementById('region-status').innerText = "Sisi Siang: Asia, Australia, Afrika";
+            } else {
+                document.getElementById('region-status').innerText = "Sisi Siang: Amerika, Pasifik";
+            }
+        }
+
+        // Time slider interaction
+        document.getElementById('time-slider').addEventListener('input', (e) => {
+            isRotating = false;
+            document.getElementById('play-pause').innerText = "▶ MULAI";
+            setTime(parseFloat(e.target.value));
+        });
+
+        function checkChallenge() {
+            const h = currentSimTime;
+            // Indonesia is roughly Noon at simulation time 10:00 - 15:00 based on our texture offset
+            if (h >= 10 && h <= 15) {
+                alert("✅ MISI BERHASIL! Indonesia menghadap Matahari (Siang).");
+
+                // Only award the challenge points once, so re-clicking after success
+                // can't inflate the score past its intended maximum.
+                if (!challengeCompleted) {
+                    challengeCompleted = true;
+                    score += CHALLENGE_POINTS;
+                    if (score > 50) score = 50;
+                    updateScore();
+                }
+
+                document.getElementById('challenge-box').classList.add('hidden');
+                document.getElementById('mission-complete-ui').classList.remove('hidden');
+                checkMissionEnd();
+            } else {
+                alert("❌ BELUM TEPAT. Putar Bumi hingga wilayah Indonesia (dekat ekuator, kanan Asia) terang terkena cahaya.");
+            }
+        }
+
+        function answerQuiz(idx, choice) {
+            const q = questions[currentQuizIdx];
+            if (choice === q.a) {
+                alert("🎉 BENAR! " + q.q);
+                score += POINTS_PER_QUESTION; // 8 points per question x 5 = 40, + 10 from challenge = 50 total
+                if (score > 50) score = 50;
+            } else {
+                alert("🔎 BELUM TEPAT. Pelajari lagi tentang arah rotasi Bumi.");
+            }
+            
+            currentQuizIdx++;
+            if (currentQuizIdx < questions.length) {
+                loadQuiz();
+            } else {
+                document.getElementById('quiz-area').innerHTML = "<h4>Semua pertanyaan selesai!</h4>";
+                checkMissionEnd();
+            }
+            updateScore();
+        }
+
+        function loadQuiz() {
+            const q = questions[currentQuizIdx];
+            document.getElementById('quiz-question').innerHTML = `<b>Pertanyaan ${currentQuizIdx+1}:</b> ${q.q}`;
+            const btns = document.querySelectorAll('.quiz-option');
+            btns.forEach((b, i) => {
+                b.innerText = String.fromCharCode(65+i) + ". " + q.opt[i];
+                b.onclick = () => answerQuiz(currentQuizIdx, String.fromCharCode(65+i));
+            });
+        }
+
+        function updateScore() {
+            document.getElementById('score-val').innerText = score;
+        }
+
+        function checkMissionEnd() {
+            // Mission is "done" once both the challenge and all 5 quiz questions are answered correctly (score === 50)
+            if (score >= 50) {
+                document.getElementById('status-tag').innerText = "🟢 MISI SELESAI";
+                document.getElementById('status-tag').className = "status-badge status-active";
+                document.getElementById('score-display').innerText = score + " / 50";
+                setTimeout(() => showModal('finish'), 2000);
+            }
+        }
+
+        function showModal(id) {
+            document.getElementById('modal-' + id).style.display = 'flex';
+        }
+
+        function closeModal() {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(m => m.style.display = 'none');
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function resetSim() {
+            score = 0;
+            challengeCompleted = false;
+            currentQuizIdx = 0;
+            updateScore();
+            setTime(6);
+            isRotating = false;
+            document.getElementById('play-pause').innerText = "▶ MULAI";
+            document.getElementById('challenge-box').classList.remove('hidden');
+            document.getElementById('mission-complete-ui').classList.add('hidden');
+            document.getElementById('status-tag').innerText = "🟡 SEDANG DIEKSPLORASI";
+            document.getElementById('status-tag').className = "status-badge";
+            loadQuiz();
+        }
+
+        function focusEarth() {
+            controls.reset();
+            camera.position.set(5, 2, 8);
+        }
+
+        // Initialize App
+        init();
+        loadQuiz();
+        updateTimeUI();
+
+    </script>
+</body>
+</html>
